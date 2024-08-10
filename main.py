@@ -5,8 +5,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+origins = [
+    # "http://192.168.0.13:3000", # url을 등록해도 되고
+    "*" # private 영역에서 사용한다면 *로 모든 접근을 허용할 수 있다.
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True, # cookie 포함 여부를 설정한다. 기본은 False
+    allow_methods=["*"],    # 허용할 method를 설정할 수 있으며, 기본값은 'GET'이다.
+    allow_headers=["*"],	# 허용할 http header 목록을 설정할 수 있으며 Content-Type, Accept, Accept-Language, Content-Language은 항상 허용된다.
+)
 
 # userStartLatitude, userStartLongitude = 36.20466303166719, 129.32213620361614
 # userDestination = [36.16499153927738, 129.2194916215949]
@@ -63,7 +77,7 @@ def reservation(item: Item):
     destination_point = np.array([item.destinationLatitude, item.destinationLongitude], dtype=np.float64)
     
     min_distance = float('inf')
-    closest_bus_index = None
+    closest_bus_index = None    
     
     for i in range(len(bus_positions)):
         # 사용자 출발지와 버스 간의 거리 계산
