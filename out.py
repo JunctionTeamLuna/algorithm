@@ -11,7 +11,7 @@ def readCSV(f):
     return rows
 
 # 사용자 위치와 목적지 설정
-userLatitude, userLongitude = 36.03466303166719, 129.42213620361614
+userLatitude, userLongitude = 36.20466303166719, 129.32213620361614
 userDestination = [36.16499153927738, 129.3194916215949]
 point = np.array(userDestination, dtype=np.float64)
 
@@ -59,17 +59,23 @@ for edge in hull_edges:
         closest_point = proj_point
 
 # 설정한 거리 단위
-distance_threshold = 0.01  # 예를 들어 0.05 단위 거리
-transportation_distance_threshold = 0.02
+distance_threshold = 0.03  # 예를 들어 0.01 단위 거리
+transportation_distance_threshold = 0.01
 
 # 선분 위의 점 계산 (Convex Hull로부터 일정 거리 떨어진 점)
 direction_vector = point - closest_point
 direction_length = np.linalg.norm(direction_vector)
-if direction_length > 0:
+if direction_length > distance_threshold:
     unit_vector = direction_vector / direction_length
     target_point = closest_point + unit_vector * distance_threshold
 else:
-    target_point = closest_point
+    target_point = point
+print(direction_length)
+
+if np.array_equal(target_point, point):
+    print(1)
+else:
+    print(0)
 
 # transportation 지점 중에서 target_point에 가장 가까운 지점 찾기
 nearest_transportation_point = None
