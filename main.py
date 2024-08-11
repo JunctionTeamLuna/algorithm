@@ -51,10 +51,12 @@ def is_facing_destination(bus_position, bus_direction, destination_position):
 DRTBus = readCSV('./data/drt.csv')
 touristAttraction = readCSV('./data/tourist_attraction.csv')
 transportation = readCSV('./data/transportation.csv')
+people = readCSV('./data/people.csv')
 
 # 관광지 좌표 추출
 touristAttractionPocs = np.array(list(map(lambda t: [float(t[1]), float(t[2])], touristAttraction)), dtype=np.float64)
 transportationPocs = np.array(list(map(lambda t: [float(t[1]), float(t[2])], transportation)), dtype=np.float64)
+peoplePocs = np.array(list(map(lambda t: [float(t[0]), float(t[1])], people)), dtype=np.float64)
 
 # Convex Hull 계산
 hull = ConvexHull(touristAttractionPocs)
@@ -92,7 +94,33 @@ def reservation(item: Item):
         closest_bus_position = bus_positions[closest_bus_index]
     print(closest_bus_index, closest_bus_position)
     
-    
+    def haversine(lat1, lon1, lat2, lon2):
+        R = 6371.0 # 지구의 반지름 (단위: km)
+        
+        dlat = np.radians(lat2 - lat1)
+        dlon = np.radians(lon2 - lon1)
+        
+        a = np.sin(dlat / 2)**2 + np.cos(np.radians(lat1)) * np.cos(np.radians(lat2)) * np.sin(dlon / 2)**2
+        c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+        
+        distance = R * c
+        return distance
+
+    # peoplePocs는 (N, 2) 크기의 np.array로 [위도, 경도] 형태의 데이터를 가짐
+    # closest_bus_position는 [위도, 경도] 형태의 1차원 배열
+
+    def find_close_points(peoplePocs, closest_bus_position, max_distance_km):
+        distances = haversine(peoplePocs[:, 0], peoplePocs[:, 1], closest_bus_position[0], closest_bus_position[1])
+        
+        # max_distance_km 이내의 거리 내에 있는 점들만 필터링
+        close_points = peoplePocs[distances <= max_distance_km]
+        
+        return close_points
+    max_distance_km = -10000
+
+    close_points = find_close_points(peoplePocs, closest_bus_position, max_distance_km)
+    print('www', close_points)
+        
     # -------- 여기까지 in -------- #
     
     
@@ -123,8 +151,8 @@ def reservation(item: Item):
             min_distance = distance_to_edge
             closest_point = proj_point
 
-    distance_threshold = 0.07  # 이 거리까지는 경로 벗어나도 태워다 준다..
-    transportation_distance_threshold = 0.01
+    distance_threshold = 0.01  # 이 거리까지는 경로 벗어나도 태워다 준다..
+    transportation_distance_threshold = 0.03
 
     # 선분 위의 점 계산 (Convex Hull로부터 일정 거리 떨어진 점)
     direction_vector = destination_point - closest_point
@@ -135,8 +163,6 @@ def reservation(item: Item):
     else:
         target_point = destination_point
     print(direction_length)
-    
-    
 
     nearest_transportation_point = None
     if np.array_equal(target_point, destination_point):
@@ -159,6 +185,9 @@ def reservation(item: Item):
             
     
     route = []
+    if close_points.size != 0:
+        for point in close_points:
+            route.append({'type':'drt','destination': point.tolist()})
     route.append({'type':'drt','destination': target_point.tolist()})
     if np.array_equal(target_point, destination_point):
         pass
@@ -168,12 +197,12 @@ def reservation(item: Item):
         else:
             route.append({'type':'taxi','destination': destination_point.tolist()})
         
-
+    print(route)
     print("Convex Hull과 점 사이의 최소 거리:", min_distance)
     print("가장 가까운 점:", closest_point)
     print("설정된 거리만큼 떨어진 점 또는 가장 가까운 교통 수단 지점:", target_point)
 
-    return {"closest_bus_index": closest_bus_index, "closest_bus_position": closest_bus_position.tolist(), "route": route}
+    return {"closest_bus_index": closest_bus_index, "closest_bus_position": closest_bus_position.tolist(), "route": route, "people": close_points.tolist()}
 
 
 @app.get("/bus")
